@@ -482,7 +482,7 @@ data Declaration
       -- ^ @unquoteDecl xs = e@
   | UnquoteDef  Range [Name] Expr
       -- ^ @unquoteDef xs = e@
-  | UnquoteData Range Name [Name] Expr
+  | UnquoteData Range [Name] [[Name]] Expr
       -- ^ @unquoteDecl data d constructor xs = e@
   | Pragma      Pragma
   deriving Eq
@@ -1059,7 +1059,7 @@ instance KillRange Declaration where
   killRange (Module _ q t d)        = killRange3 (Module noRange) q t d
   killRange (UnquoteDecl _ x t)     = killRange2 (UnquoteDecl noRange) x t
   killRange (UnquoteDef _ x t)      = killRange2 (UnquoteDef noRange) x t
-  killRange (UnquoteData _ xs cs t) = killRange3 (UnquoteData noRange) xs cs t
+  killRange (UnquoteData _ xs css t) = killRange3 (UnquoteData noRange) xs css t
   killRange (Pragma p)              = killRange1 Pragma p
 
 instance KillRange Expr where

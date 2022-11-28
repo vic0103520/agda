@@ -31,6 +31,30 @@ import qualified Agda.Syntax.Concrete as C
 import Agda.Syntax.Abstract.Name
 import qualified Agda.Syntax.Internal as I
 import Agda.Syntax.Common
+    ( bareNameOf,
+      defaultNamedArg,
+      namedArg,
+      sameHiding,
+      visible,
+      Arg(unArg),
+      ArgInfo,
+      Delayed,
+      Erased,
+      Hiding,
+      ImportDirective',
+      ImportedName',
+      InteractionId,
+      IsAbstract(AbstractDef),
+      LensHiding(mapHiding, getHiding),
+      Named,
+      NamedArg,
+      ProjOrigin(ProjSystem),
+      RString,
+      RecordDirectives',
+      Renaming',
+      RewriteEqn',
+      Underscore(..),
+      UniverseCheck )
 import Agda.Syntax.Info
 import Agda.Syntax.Literal
 import Agda.Syntax.Position
@@ -188,7 +212,7 @@ data Declaration
       -- ^ Only for highlighting purposes
   | UnquoteDecl MutualInfo [DefInfo] [QName] Expr
   | UnquoteDef  [DefInfo] [QName] Expr
-  | UnquoteData [DefInfo] QName UniverseCheck [DefInfo] [QName] Expr
+  | UnquoteData [DefInfo] [QName] UniverseCheck [[DefInfo]] [[QName]] Expr
   | ScopedDecl ScopeInfo [Declaration]  -- ^ scope annotation
   deriving (Show, Generic)
 

@@ -443,7 +443,7 @@ class ToAbstract c where
 
 -- | This function should be used instead of 'toAbstract' for things that need
 --   to keep track of precedences to make sure that we don't forget about it.
-toAbstractCtx :: ToAbstract c => Precedence -> c-> ScopeM (AbsOfCon c)
+toAbstractCtx :: ToAbstract c => Precedence -> c -> ScopeM (AbsOfCon c)
 toAbstractCtx ctx c = withContextPrecedence ctx $ toAbstract c
 
 --UNUSED Liang-Ting Chen 2019-07-16
@@ -2040,32 +2040,36 @@ instance ToAbstract NiceDeclaration where
       zipWithM_ (rebindName p OtherDefName) xs ys
       return [ A.UnquoteDef [ mkDefInfo x fx PublicAccess a r | (fx, x) <- zip fxs xs ] ys e ]
 
-    NiceUnquoteData r p a pc uc x cs e -> do
-      fx <- getConcreteFixity x
-      x' <- freshAbstractQName fx x
-      bindName p QuotableName x x'
+    NiceUnquoteData r p a pc uc xs css e -> do
+      fxs <- mapM getConcreteFixity xs
+      xs' <- zipWithM freshAbstractQName fxs xs
+      zipWithM_ (bindName p QuotableName) xs xs'
 
-      -- Create the module for the qualified constructors
-      checkForModuleClash x
-      let m = qnameToMName x'
-      createModule (Just IsDataModule) m
-      bindModule p x m  -- make it a proper module
+      -- Create the modules for the qualified constructors
+      mapM_ checkForModuleClash xs
+      let ms = map qnameToMName xs'
+      mapM_ (createModule $ Just IsDataModule) ms
+      zipWithM_ (bindModule p) xs ms  -- make them proper modules
+      css' <- sequence [ mapM (bindUnquoteConstructorName m p) cs | (m, cs) <- zip ms css ] -- bind constructors accordingly
 
-      cs' <- mapM (bindUnquoteConstructorName m p) cs
+      e <- toAbstract e
 
-      e <- withCurrentModule m $ toAbstract e
+      zipWithM_ (rebindName p DataName) xs xs'
+      zipWithM_ (zipWithM_ $ rebindName p ConName) css css'
+      sequence_ [ withCurrentModule m $ zipWithM_ (rebindName p ConName) cs cs' | (m, cs, cs') <- zip3 ms css css' ]
 
-      rebindName p DataName x x'
-      zipWithM_ (rebindName p ConName) cs cs'
-      withCurrentModule m $ zipWithM_ (rebindName p ConName) cs cs'
-
-      fcs <- mapM getConcreteFixity cs
+      fcss <- mapM (mapM getConcreteFixity) css
       let mi = MutualInfo TerminationCheck YesCoverageCheck pc r
       return
-        [ A.Mutual
-          mi [A.UnquoteData
-            [ mkDefInfo x fx p a r ] x' uc
-            [ mkDefInfo c fc p a r | (fc, c) <- zip fcs cs] cs' e ]
+        [ A.Mutual mi
+          [ A.UnquoteData
+            [ mkDefInfo x fx PublicAccess a r | (fx, x) <- zip fxs xs ]
+            xs'
+            uc
+            [ [mkDefInfo c fc p a r | (fc, c) <- zip fcs cs ] | (fcs, cs) <- zip fcss css ]
+            css'
+            e
+          ]
         ]
 
     NicePatternSyn r a n as p -> do
@@ -2268,21 +2272,19 @@ bindRecordConstructorName x kind a p = do
 
 bindUnquoteConstructorName :: ModuleName -> Access -> C.Name -> TCM A.QName
 bindUnquoteConstructorName m p c = do
-
   r <- resolveName (C.QName c)
   fc <- getConcreteFixity c
   c' <- withCurrentModule m $ freshAbstractQName fc c
   let aname qn = AbsName qn QuotableName Defined NoMetadata
       addName = modifyCurrentScope $ addNameToScope (localNameSpace p) c $ aname c'
       success = addName >> (withCurrentModule m $ addName)
+  -- Since we know we are dealing with a constructor, we can igore conflicting definitions of other kinds
   case r of
-    _ | isNoName c       -> success
-    UnknownName          -> success
+    -- Can't reach?
     ConstructorName i ds -> if all (isJust . isConName . anameKind) ds
       then success
       else typeError $ ClashingDefinition (C.QName c) (anameName $ List1.head ds) Nothing
-    _ -> typeError $ GenericError $
-       "The name " ++ prettyShow c ++ " already has non-constructor definitions"
+    _ -> success
   return c'
 
 instance ToAbstract DataConstrDecl where

@@ -193,9 +193,9 @@ checkDecl d = setCurrentRange d $ do
       -- TODO: Benchmarking for unquote.
       A.UnquoteDecl mi is xs e -> checkMaybeAbstractly is $ checkUnquoteDecl mi is xs e
       A.UnquoteDef is xs e     -> impossible $ checkMaybeAbstractly is $ checkUnquoteDef is xs e
-      A.UnquoteData is x uc js cs e -> checkMaybeAbstractly (is ++ js) $ do
-        reportSDoc "tc.unquote.data" 20 $ "Checking unquoteDecl data" <+> prettyTCM x
-        Nothing <$ unquoteTop (x:cs) e
+      A.UnquoteData is xs uc jss css e -> checkMaybeAbstractly (is ++ concat jss) $ do
+        reportSDoc "tc.unquote.data" 20 $ "Checking unquoteDecl data" <+> prettyTCM xs
+        Nothing <$ unquoteTop (xs ++ concat css) e
 
     whenNothingM (asksTC envMutualBlock) $ do
 

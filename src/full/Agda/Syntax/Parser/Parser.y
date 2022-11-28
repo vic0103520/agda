@@ -409,6 +409,11 @@ SpaceIds
     : Id SpaceIds { $1 <| $2 }
     | Id          { singleton $1 }
 
+SemiIds :: {List1 (List1 Name)}
+SemiIds
+    : SpaceIds ';' SemiIds { $1 <| $3 }
+    | SpaceIds             { singleton $1 }
+
 -- When looking for a double closed brace, we accept either a single token '}}'
 -- (which is what the unicode character "RIGHT WHITE CURLY BRACKET" is
 -- postprocessed into in LexActions.hs), but also two consecutive tokens '}'
@@ -1310,8 +1315,8 @@ Primitive : 'primitive' ArgTypeSignaturesOrEmpty  {
 UnquoteDecl :: { Declaration }
 UnquoteDecl
   : 'unquoteDecl' '=' Expr { UnquoteDecl (fuseRange $1 $3) [] $3 }
-  | 'unquoteDecl' 'data' Id '=' Expr { UnquoteData (getRange($1, $2, $5)) $3 [] $5 }
-  | 'unquoteDecl' 'data' Id 'constructor' SpaceIds '=' Expr { UnquoteData (getRange($1, $2, $4, $7)) $3 (List1.toList $5) $7 }
+  | 'unquoteDecl' 'data' SpaceIds '=' Expr { UnquoteData (getRange($1, $2, $5)) (List1.toList $3) [] $5 }
+  | 'unquoteDecl' 'data' SpaceIds 'constructor' SemiIds '=' Expr { UnquoteData (getRange($1, $2, $4, $7)) (List1.toList $3) (List.map List1.toList (List1.toList $5)) $7 }
   | 'unquoteDecl' SpaceIds '=' Expr { UnquoteDecl (fuseRange $1 $4) (List1.toList $2) $4 }
   | 'unquoteDef'  SpaceIds '=' Expr { UnquoteDef (fuseRange $1 $4) (List1.toList $2) $4 }
 

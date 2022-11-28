@@ -79,7 +79,7 @@ data NiceDeclaration
   | NiceGeneralize Range Access ArgInfo TacticAttribute Name Expr
   | NiceUnquoteDecl Range Access IsAbstract IsInstance TerminationCheck CoverageCheck [Name] Expr
   | NiceUnquoteDef Range Access IsAbstract TerminationCheck CoverageCheck [Name] Expr
-  | NiceUnquoteData Range Access IsAbstract PositivityCheck UniverseCheck Name [Name] Expr
+  | NiceUnquoteData Range Access IsAbstract PositivityCheck UniverseCheck [Name] [[Name]] Expr
   deriving (Show, Generic)
 
 instance NFData NiceDeclaration
