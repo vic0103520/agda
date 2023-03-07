@@ -292,6 +292,7 @@ name: Build, Test, and Benchmark
     - master
     - ci-*
     - release*
+    - hidden-lambdas
     paths:
     - '**'
     - '!.github/**'

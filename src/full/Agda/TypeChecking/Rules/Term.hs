@@ -1302,6 +1302,20 @@ checkExpr' cmp e t =
             ifM (checkSizeNeverZero v) proceed fallback
             `catchError` \_ -> fallback
           _ -> proceed
+    | Application hd args <- appView e
+        , A.Con name <- e
+        = do
+      -- add hidden lambdas to e
+      let proceed = foldM alg e (reverse args) >>= \e' -> checkExpr' cmp e' tReduced
+      proceed
+      -- expandHidden <- asksTC envExpandLast
+      -- if definitelyIntroduction then proceed else
+        -- if expandHidden == ReallyDontExpandLast then fallback else proceed
+        
+    -- todo, after write implicit args explicitly
+    | Application hd args <- appView e
+        , A.Def' name _ <- e = do
+      fallback
 
     | otherwise = fallback
 
@@ -1323,6 +1337,17 @@ checkExpr' cmp e t =
 
     hiddenLHS (A.Clause (A.LHS _ (A.LHSHead _ (a : _))) _ _ _ _) = notVisible a
     hiddenLHS _ = False
+
+    alg = \e' namedArg -> let info = setOrigin Inserted $ argInfo namedArg
+                              na   = unArg namedArg
+                              y    = fromMaybe "_" . fmap (rangedThing . woThing) . nameOf $ na
+                              a    = namedThing na
+                              h    = getHiding info
+                          in  if visible h || hiddenLambdaOrHole h e then return e' else do
+                              x <- C.setNotInScope <$> freshName rx y
+                              reportSDoc "tc.term.expr.impl" 15 $
+                                "Inserting implicit " <+> text y <+> " to " <+> fsep [ prettyTCM e', ":" ]
+                              return $ A.Lam (A.ExprRange re) (domainFree info $ A.mkBinder x) e'
 
     -- Things with are definitely introductions,
     -- thus, cannot be of hidden Pi-type, unless they are hidden lambdas.

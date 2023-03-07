@@ -121,6 +121,7 @@ name: Build (stack)
     - master
     - ci-*
     - release*
+    - hidden-lambdas
     paths:
     - .github/workflows/stack.yml
     - Agda.cabal
